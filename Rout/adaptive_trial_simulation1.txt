@@ -1,1 +1,3 @@
 Ntotal t1 t2 t3 t4 t5 winner prob_superior2 prob_superior3 prob_superior4 prob_superior5 prob_futile2 prob_futile3 prob_futile4 prob_futile5
+50 9 11 9 9 12 4 0.658 0.846 0.79 0.992 0.342 0.154 0.21 0.008
+80 18 13 19 12 18 4 0.198 0.834 0.344 0.992 0.802 0.166 0.656 0.008
