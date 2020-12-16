@@ -1,0 +1,1 @@
+Ntotal t1 t2 t3 t4 t5 winner prob_superior2 prob_superior3 prob_superior4 prob_superior5 prob_futile2 prob_futile3 prob_futile4 prob_futile5

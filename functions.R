@@ -96,12 +96,11 @@ run_trial = function(Trt_max, Nmax, Nbatch,
   reg_form = as.formula('y ~ 1 + t*Trt + t - Trt + (1 + t | id)')
 
   # Load model parameters used to simulate data
-  load('stan_out_rate.RData')
-  source('functions.R')
+  load('Rout/stan_out_rate.RData')
 
   # Set simulation parameters
   niter = 1000
-  nchains = 4
+  nchains = 1
   Nbatch_1 = 50 # burn-in
   p_id = 1
   current_probs = init_probs
@@ -198,7 +197,7 @@ summary_trial = function(trial_out, Trt_max, success_stop_prob, futility_stop_pr
   trt_numbers = table(sim_data$Trt[!duplicated(sim_data$id)])
   xx=as.matrix(trial_out$interim_fit, pars = names(trial_out$interim_fit$coefficients)[grep('t:Trt',names(trial_out$interim_fit$coefficients))])
 
-  winner = NA
+  winner = 0
   if(compute_succes(xx, success_stop_prob, minimum_effect)) {
     winner = which.max(apply(xx, 2, function(x) mean(x>minimum_effect)))
   }
@@ -206,11 +205,11 @@ summary_trial = function(trial_out, Trt_max, success_stop_prob, futility_stop_pr
     winner = -1
   }
 
-  prob_superior = max(apply(xx, 2, function(x) mean(x > minimum_effect)))
-  prob_futile = max(apply(xx, 2, function(x) mean(x < minimum_effect)))
+  prob_superior = apply(xx, 2, function(x) mean(x > minimum_effect))
+  prob_futile = apply(xx, 2, function(x) mean(x < minimum_effect))
 
   res = c(N_patients, trt_numbers, winner, prob_superior, prob_futile)
-  names(res) = c("Ntotal", paste('t', 1:Trt_max, sep = ''), 'winner', 'prob_superior','prob_futile')
+
   return(res)
 }
 

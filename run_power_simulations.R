@@ -1,5 +1,5 @@
 #*** This script does the power simulations
-#* outputs Figures 2 & 3 in manuscript
+#* outputs Figures 1 - 3 in manuscript
 
 library(doParallel)
 library(tictoc)
@@ -53,7 +53,7 @@ power_list = lapply(power_summaries, function(ll) apply(ll, 1:2, function(x) mea
 cols=RColorBrewer::brewer.pal(7,'Dark2')[c(4,1)]
 my_cols = rep(cols, length(Max_follows))
 my_ltys = foreach(x = 1:length(Max_follows), .combine = c) %do% rep(x,2)
-pdf('Rate_better_timetoevent.pdf', width = 10, height = 8)
+pdf('Plots/Rate_better_timetoevent.pdf', width = 10, height = 8)
 par(mfrow=c(2,3),las=1,lwd=1.5, cex.lab=1.3,cex.axis=1.3,family='serif',mar=c(5,5,3,2),bty='n')
 for(i in 1:length(Effect_sizes)) {
   plot(Sample_sizes, power_list[[1]][i,], ylim = c(0,1),type='l',
@@ -97,7 +97,7 @@ if(FORCE_RE_RUN){
   load(file = 'once_vs_twice.RData')
 }
 
-pdf('Once_versus_twice.pdf', width = 8, height = 8)
+pdf('Plots/Once_versus_twice.pdf', width = 8, height = 8)
 par(mfrow=c(1,1),las=1,lwd=1.5, cex.lab=1.3,cex.axis=1.3,family='serif',mar=c(5,5,3,2),bty='n')
 plot(Sample_sizes, apply(power_Rates_10_once,1,function(x) mean(x<my_alpha)),type='l',
      ylab='Power', xlab= 'Sample size per arm', ylim=c(0,1))
@@ -135,7 +135,7 @@ if(FORCE_RE_RUN){
 }
 
 
-pdf('Duration_follow_up.pdf', width = 8, height = 8)
+pdf('Plots/Duration_follow_up.pdf', width = 8, height = 8)
 par(mfrow=c(1,1),las=1,lwd=1.5, cex.lab=1.3,cex.axis=1.3,family='serif',mar=c(5,5,3,2),bty='n')
 plot(Max_follow, apply(power_rates_follow, 1, function(x) mean(x<my_alpha)),
      type='l', ylim = c(0,1), ylab='Power',panel.first=grid(),
@@ -157,7 +157,7 @@ sim_dat_75 = simulate_data(N = 10^4, effect = 1.075, thetas = thetas, xs = 0:21)
 sim_dat_15 = simulate_data(N = 10^4, effect = 1.15, thetas = thetas, xs = 0:21)
 sim_dat_25 = simulate_data(N = 10^4, effect = 1.25, thetas = thetas, xs = 0:21)
 
-pdf('Example.pdf', width = 10, height = 10)
+pdf('Plots/Example.pdf', width = 10, height = 10)
 par(las = 1, mfrow=c(2,2), family='serif', bty='n',cex.axis=1.3,cex.lab=1.3)
 set.seed(485)
 plot(0:21, sim_dat_null[1,], col = adjustcolor('grey',.3),type='l',ylim = c(40,13),
