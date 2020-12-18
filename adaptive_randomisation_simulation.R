@@ -82,15 +82,13 @@ if(FORCE_RERUN | !file.exists(sim_path) | Append_results){
 #### Plot results
 sims1 = read.table('Rout/adaptive_trial_simulation1.txt', header = F,skip = 1,
                    col.names = c("Ntotal", paste('t', 1:Trt_max, sep = ''), 'winner',
-                                 paste('prob_superior', 1:Trt_max, sep = ''),
-                                 paste('prob_futile', 1:Trt_max, sep = '')), fill = T)
+                                 paste('prob_superior', 2:Trt_max, sep = ''),
+                                 paste('prob_futile', 2:Trt_max, sep = '')), fill = T)
 sims2 = read.table('Rout/adaptive_trial_simulation2.txt', header = F,skip = 1,
                    col.names = c("Ntotal", paste('t', 1:Trt_max, sep = ''), 'winner',
-                                 paste('prob_superior', 1:Trt_max, sep = ''),
-                                 paste('prob_futile', 1:Trt_max, sep = '')), fill = T)
+                                 paste('prob_superior', 2:Trt_max, sep = ''),
+                                 paste('prob_futile', 2:Trt_max, sep = '')), fill = T)
 
-sims1$winner[is.na(sims1$winner)]=0
-sims2$winner[is.na(sims2$winner)]=0
 
 # sims1 give us an estimate of type 2 error for this effect size
 type_2_error = 100*sum(sims1$winner != 4)/nrow(sims1)

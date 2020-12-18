@@ -1,0 +1,10 @@
+base
+foreach
+iterators
+doParallel
+tictoc
+StanHeaders
+ggplot2
+rstan
+RColorBrewer
+survival

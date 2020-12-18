@@ -51,8 +51,9 @@ compute_pvalues = function(Effect_sizes, Sample_sizes, Follow_up_days,
   power_matrix = array(dim = c(length(Effect_sizes),length(Sample_sizes),Nsim))
   tic()
   for(i in 1:length(Effect_sizes)){
-    print(i)
     effect_size = Effect_sizes[i]
+    writeLines(sprintf('Doing for effect size %s',effect_size))
+
     for(j in 1:length(Sample_sizes)){
       Nsample = Sample_sizes[j]
       ## Loop over simulated trials
