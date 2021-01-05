@@ -1,0 +1,7 @@
+base
+foreach
+iterators
+doParallel
+tictoc
+Rcpp
+rstanarm

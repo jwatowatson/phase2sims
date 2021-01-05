@@ -1,0 +1,177 @@
+---
+title: "Adaptive randomisation"
+author: "James Watson"
+date: "12/18/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE, 
+                      include = TRUE, echo = TRUE,
+                      fig.width = 9, fig.height = 9,
+                      fig.pos = 'H', 
+                      dev = 'png', dpi = 300)
+
+library(doParallel)
+library(tictoc)
+library(rstanarm)
+registerDoParallel(cores = 8)
+FORCE_RERUN = F # re-run all sims from scratch
+Append_results = F  # add to existing simulations to increase precision
+
+# set of functions to do simulations
+source('functions.R')
+```
+
+## Set up parameters
+
+
+Parameters for the simulations
+```{r }
+Trt_max = 5 # number of arms including control, has to be at least 2
+effects = c(rep(1,Trt_max-1), 1.1) # one active arm
+max_follow = 10  # follow-up in days
+Ntrials = 1000  # number of trials to simulate
+Nbatch = 30 # number of patients per batch for adaptive randomisation
+Nmax = 400 # max number of patients
+init_probs = rep(1/Trt_max, Trt_max)
+success_stop_prob = 0.99
+futility_stop_prob = 0.1
+minimum_effect = 0.01
+```
+
+## Simulation 1
+
+Takes about 2 days to run
+```{r sim1}
+sim_path = 'Rout/adaptive_trial_simulation1.txt'
+if(FORCE_RERUN | !file.exists(sim_path) | Append_results){
+  tic()
+  my_cols = c("Ntotal", paste('t', 1:Trt_max, sep = ''), 'winner',
+              paste('prob_superior', 2:Trt_max, sep = ''),
+              paste('prob_futile', 2:Trt_max, sep = ''))
+  write.table(t(my_cols), sim_path, row.names = F, col.names = F, quote = F)
+  sims = foreach(i = 1:Ntrials, .combine = rbind) %dopar% {
+    out = run_trial(Trt_max = Trt_max,
+                    Nmax = Nmax,
+                    Nbatch = Nbatch,
+                    effects = effects,
+                    max_follow = max_follow,
+                    init_probs = init_probs,
+                    success_stop_prob = success_stop_prob,
+                    futility_stop_prob = futility_stop_prob,
+                    minimum_effect = minimum_effect)
+    my_summary = summary_trial(out, Trt_max, success_stop_prob, 
+                               futility_stop_prob, minimum_effect)
+    # write results to file
+    write.table(t(my_summary), sim_path, append = T, 
+                row.names = F, col.names = F, quote = F)
+    my_summary
+  }
+  toc()
+}
+```
+
+
+## Simulation 2
+
+Simulate an adaptive trial with 0 drugs that work
+```{r}
+effects = rep(1,Trt_max)
+sim_path = 'Rout/adaptive_trial_simulation2.txt'
+
+# Make this smaller - otherwise takes aages
+Ntrials = 100  # number of trials to simulate, 100 trials takes ~38 hours on 8 cores
+if(FORCE_RERUN | !file.exists(sim_path) | Append_results){
+  tic()
+  if(!Append_results){
+    my_cols = c("Ntotal", paste('t', 1:Trt_max, sep = ''), 'winner',
+                paste('prob_superior', 2:Trt_max, sep = ''),
+                paste('prob_futile', 2:Trt_max, sep = ''))
+    write.table(t(my_cols), sim_path, row.names = F, col.names = F, quote = F)
+  }
+
+  sims = foreach(i = 1:Ntrials, .combine = rbind) %dopar% {
+    out = run_trial(Trt_max = Trt_max,
+                    Nmax = Nmax,
+                    Nbatch = Nbatch,
+                    effects = effects,
+                    max_follow = max_follow,
+                    init_probs = init_probs,
+                    success_stop_prob = success_stop_prob,
+                    futility_stop_prob = futility_stop_prob,
+                    minimum_effect = minimum_effect)
+    my_summary = summary_trial(out, Trt_max, success_stop_prob, 
+                               futility_stop_prob, minimum_effect)
+    # write results to file
+    write.table(t(my_summary), sim_path, append = T, row.names = F, 
+                col.names = F, quote = F)
+    my_summary
+  }
+  toc()
+}
+```
+
+
+
+## Plot results
+
+```{r}
+#### Plot results
+sims1 = read.table('Rout/adaptive_trial_simulation1.txt', header = F,skip = 1,
+                   col.names = c("Ntotal", paste('t', 1:Trt_max, sep = ''), 'winner',
+                                 paste('prob_superior', 2:Trt_max, sep = ''),
+                                 paste('prob_futile', 2:Trt_max, sep = '')), fill = T)
+sims2 = read.table('Rout/adaptive_trial_simulation2.txt', header = F,skip = 1,
+                   col.names = c("Ntotal", paste('t', 1:Trt_max, sep = ''), 'winner',
+                                 paste('prob_superior', 2:Trt_max, sep = ''),
+                                 paste('prob_futile', 2:Trt_max, sep = '')), fill = T)
+
+median(sims1$Ntotal)
+median(sims2$Ntotal)
+
+# sims1 give us an estimate of type 2 error for this effect size
+type_2_error = round(100*sum(sims1$winner != 4)/nrow(sims1),1)
+type_1_error = round(100*sum(sims2$winner > 0)/nrow(sims2),1)
+
+
+writeLines(sprintf('The type 1 error is %s%%', type_1_error))
+writeLines(sprintf('The type 2 error is %s%%\n', type_2_error))
+
+writeLines('Outcomes in simulation 1: (-1: futility; 0: no decision; 1-4 winner)')
+round(100*table(sims1$winner)/nrow(sims1),1)
+writeLines('Outcomes in simulation 2: (-1: futility; 0: no decision; 1-4 winner)')
+round(100*table(sims2$winner)/nrow(sims2),1)
+
+writeLines('Number of patients per arm in simulation 1 (T1 is control):')
+apply(sims1[, paste('t', 1:Trt_max, sep = '')], 2, median)
+writeLines('Number of patients per arm in simulation 2 (T1 is control):')
+apply(sims2[, paste('t', 1:Trt_max, sep = '')], 2, median)
+```
+
+
+```{r adaptive_randomisation_sims}
+par(las = 1, mfrow=c(2,2), family='serif', cex.lab=1.5, cex.axis=1.3)
+hist(sims1$Ntotal, breaks = seq(50,410,by=30), freq = T, xlab = 'Total trial size',
+     ylab = 'Number of trials', xaxt='n', main = '')
+axis(1, at = seq(50,400, by = 50))
+mtext(text = 'A', side = 3, adj = 0, cex = 1.5)
+hist(100*sims1$t5/sims1$Ntotal, main = '', xlab = "Randomised to active drug (%)",
+     ylab = 'Number of trials', breaks = seq(0,70, by=5))
+abline(v = 100/5, col='red',lwd=2)
+mtext(text = 'B', side = 3, adj = 0, cex = 1.5)
+
+hist(sims2$Ntotal, breaks = seq(50,410,by=30), freq = T, xlab = 'Total trial size',
+     ylab = 'Number of trials', xaxt='n', main = '')
+axis(1, at = seq(50,400, by = 50))
+mtext(text = 'C', side = 3, adj = 0, cex = 1.5)
+
+barplot(table(sims2$winner), main = '', xlab = "",
+        ylab = 'Number of trials',
+        names.arg = c('Futile','None',paste('T', 1:(Trt_max-1), sep = '')))
+mtext(text = 'D', side = 3, adj = 0, cex = 1.5)
+mtext(text = 'Decision', side = 1, line = 3, cex = 1.3)
+
+```
+
+
