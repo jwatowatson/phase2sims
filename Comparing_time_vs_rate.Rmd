@@ -55,7 +55,7 @@ for(i in sample(0:1000, 9)){
   points(0:21, sim_dat_null[i,], pch='.')
   j = j+1
 }
-mtext(text = 'A', side = 3, adj = 0, cex=2)
+mtext(text = 'A)', side = 3, adj = 0, cex=2)
 
 cols = rev(RColorBrewer::brewer.pal(n = 5, name = 'RdYlBu'))
 plot(0:21, colMeans(sim_dat_null), type='l', ylab='Ct', col=cols[1],
@@ -66,7 +66,7 @@ lines(0:21, colMeans(sim_dat_15),col=cols[4],lwd=2)
 lines(0:21, colMeans(sim_dat_25),col=cols[5],lwd=2)
 legend('topright', legend = c(0,5,7.5,15,25),col=cols, bty='n',
        inset=0.03,lwd=3, title = 'Effect size (%)')
-mtext(text = 'B', side = 3, adj = 0, cex=2)
+mtext(text = 'B)', side = 3, adj = 0, cex=2)
 
 
 rates_15 = compute_rate(sim_data = sim_dat_15, xs = 0:21)
@@ -78,7 +78,7 @@ lines(density(rates_15), col=cols[4], lwd=3)
 axis(1, at = seq(1,3,by=.5), labels = 24/seq(1,3,by=.5))
 legend('topright', legend = c(0,15),col=cols[c(1,4)], bty='n',
        inset=0.03,lwd=3, title = 'Effect size (%)')
-mtext(text = 'C', side = 3, adj = 0, cex=2)
+mtext(text = 'C)', side = 3, adj = 0, cex=2)
 
 
 TC_0 = compute_clearance_time(sim_dat_null,xs = 0:21)[,1]
@@ -89,7 +89,7 @@ plot(density(TC_15[complete.cases(TC_15)], bw = .6),
 lines(density(TC_0[complete.cases(TC_0)],bw = 0.6), col=cols[1], lwd=3)
 legend('topright', legend = c(0,15),col=cols[c(1,4)], bty='n',
        inset=0.03,lwd=3, title = 'Effect size (%)')
-mtext(text = 'D', side = 3, adj = 0, cex=2)
+mtext(text = 'D)', side = 3, adj = 0, cex=2)
 
 ```
 
@@ -146,7 +146,7 @@ cols=c(RColorBrewer::brewer.pal(8,'Dark2')[c(2,8)])
 my_cols = rep(cols, length(Max_follows))
 my_ltys = foreach(x = 1:length(Max_follows), .combine = c) %do% rep(x,2)
 
-
+titles = c('A)','B)','C)','D)','E)','F)')
 par(mfrow=c(2,3),las=1,lwd=1.5, cex.lab=1.6,cex.axis=1.4,
     family='serif',mar=c(6,5,3,3),bty='n')
 for(i in 1:length(Effect_sizes)) {
@@ -156,6 +156,8 @@ for(i in 1:length(Effect_sizes)) {
     lines(Sample_sizes, power_list[[j]][i,], col=my_cols[j], lwd=2,lty=my_ltys[j])
   }
   mtext(text = paste(100*(Effect_sizes[i]-1),'%',sep=''), side = 3, cex=1.5)
+  mtext(text = titles[i], side = 3, cex=1.5, adj = 0)
+
   if(i==1){
     legend('topleft',col=c(cols, rep('black',length(Max_follows))),bty='n',
            lty=c(1,1,1:length(Max_follows)),inset=0.03,title = 'Endpoint',
