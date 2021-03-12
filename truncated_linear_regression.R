@@ -43,7 +43,7 @@ transformed parameters {
     mu_obs[n] = (beta_0 + beta_0_id[id_obs[n]]) + (beta_t*(1+beta_Trt*Trt_obs[n]) + beta_t_id[id_obs[n]])*t_obs[n];
   }
   for(n in 1:Ncens){
-    mu_cens[n] = (beta_0 + beta_0_id[id_cens[n]]) + (beta_t*(1+beta_Trt*Trt_cens[n]) + beta_t_id[id_cens[n]])*t_cens[n];
+    mu_cens[n] = (beta_0 + beta_0_id[id_cens[n]]) + (beta_t + beta_t_id[id_cens[n]])*(1+beta_Trt*Trt_cens[n])*t_cens[n];
   }
 }
 model {

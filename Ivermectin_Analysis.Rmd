@@ -10,24 +10,26 @@ knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE,
                       echo = TRUE, include = TRUE, 
                       fig.width = 8, fig.height = 8,
                       fig.pos = 'H',dev = 'png', dpi = 300)
-
+version
 library(rstan)
 source('truncated_linear_regression.R')
+```
 
+
+```{r}
 # Data were downloaded from http://diposit.ub.edu/dspace/handle/2445/173199
 saint = read.csv("Ivermectin_study_data.csv", header=T)
 # 1: ivermectin ; 2: placebo - we set placebo to be 1
 saint$treat[saint$treat==2]=0
 # take mean value of N and E PCR
 saint = dplyr::filter(saint, !(is.na(ct_n) & is.na(ct_e)))
-saint$ct = round(rowMeans(saint[, c('ct_n','ct_e')], na.rm = T))
+saint$ct = rowMeans(saint[, c('ct_n','ct_e')], na.rm = T)
 ind_fit = saint$day<=21
 
 iv_dat1 = data.frame(t = saint$day[ind_fit],
                      Trt = as.factor(saint$treat)[ind_fit],
                      id = saint$studyno[ind_fit],
                      y = saint$ct[ind_fit])
-
 ```
 
 run the model
@@ -96,7 +98,7 @@ for(id in 1:data_1$J){
   indc = data_1$id_cens==id
   plot(data_1$t_obs[indo], 
        data_1$y_obs[indo],pch=20, xlab='', ylab='',cex=2,
-       ylim=range(saint$ct), xlim = c(0,6), yaxt='n', xaxt='n')
+       ylim= rev(range(saint$ct)), xlim = c(0,6), yaxt='n', xaxt='n')
   points(data_1$t_cens[indc], 
        data_1$y_cens[indc],pch=18,cex=2,col='blue')
   polygon(c(c(data_1$t_obs[indo],data_1$t_cens[indc]),
