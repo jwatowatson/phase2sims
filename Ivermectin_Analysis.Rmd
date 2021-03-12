@@ -1,0 +1,175 @@
+---
+title: "Ivermectin analysis"
+author: "James Watson"
+date: "3/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache = TRUE, cache.comments = FALSE,
+                      echo = TRUE, include = TRUE, 
+                      fig.width = 8, fig.height = 8,
+                      fig.pos = 'H',dev = 'png', dpi = 300)
+
+library(rstan)
+source('truncated_linear_regression.R')
+
+# Data were downloaded from http://diposit.ub.edu/dspace/handle/2445/173199
+saint = read.csv("Ivermectin_study_data.csv", header=T)
+# 1: ivermectin ; 2: placebo - we set placebo to be 1
+saint$treat[saint$treat==2]=0
+# take mean value of N and E PCR
+saint = dplyr::filter(saint, !(is.na(ct_n) & is.na(ct_e)))
+saint$ct = round(rowMeans(saint[, c('ct_n','ct_e')], na.rm = T))
+ind_fit = saint$day<=21
+
+iv_dat1 = data.frame(t = saint$day[ind_fit],
+                     Trt = as.factor(saint$treat)[ind_fit],
+                     id = saint$studyno[ind_fit],
+                     y = saint$ct[ind_fit])
+
+```
+
+run the model
+```{r}
+CT_threshold = 32
+data_stan = iv_dat1[iv_dat1$t<10, ]
+ind_obs = data_stan$y<CT_threshold
+ind_cens = !ind_obs
+data_stan$id = as.numeric(as.factor(data_stan$id))
+data_stan$Trt = as.numeric(as.factor(data_stan$Trt))-1
+data_1 = list(Nobs = sum(ind_obs),
+              Ncens = sum(ind_cens),
+              J = length(unique(data_stan$id)),
+              id_obs = data_stan$id[ind_obs],
+              t_obs = (data_stan$t-1)[ind_obs],
+              Trt_obs = data_stan$Trt[ind_obs],
+              y_obs = data_stan$y[ind_obs],
+              id_cens = data_stan$id[ind_cens],
+              t_cens = (data_stan$t-1)[ind_cens],
+              Trt_cens = data_stan$Trt[ind_cens],
+              y_cens = data_stan$y[ind_cens],
+              CT_threshold=CT_threshold,
+              prior_Trt_sd=.1,
+              prior_CT_intercept = 20,
+              prior_sigma_sd = 1,
+              prior_mean_slope = 2,
+              prior_tau_intercept_sd = 2,
+              prior_tau_slope_sd = 1,
+              prior_tau_intercept_mean = 3,
+              prior_tau_slope_mean = .5)
+interim_fit1 = sampling(object = stan_lin_model,
+                        data = data_1,
+                        chains=4, iter=10^5,thin=10)
+
+out=extract(interim_fit1)
+```
+
+
+```{r ivermectin_RCT, fig.width=11, fig.height=6}
+par(las=1, bty='n', family='serif', 
+    mfrow=c(1,2), cex.lab=1.5, cex.axis=1.5)
+xs = jitter(iv_dat1$t, amount = .3)-1
+plot(xs, iv_dat1$y, pch=20, xlab = 'Time from enrollment',
+     ylab='Cycle threshold', xaxt='n', ylim=rev(range(iv_dat1$y)))
+axis(1, at=c(0,3,6,13,20))
+abline(h=32, lty=2, lwd=3, v=7, col='red')
+for(id in unique(iv_dat1$id)){
+  lines(xs[iv_dat1$id==id], iv_dat1$y[iv_dat1$id==id],lty=2)
+}
+mtext(text = 'A)', side = 3, cex=1.5, adj = 0)
+
+hist(100*out$beta_Trt, xlab='Treatment effect (%)',
+     main='', breaks = 50, yaxt='n',ylab = '', freq = F,
+     border = NA, col=adjustcolor('grey',.9))
+lines(-300:300, dnorm(c(-300:300), mean = 0, sd = 100*data_1$prior_Trt_sd), col='blue',lwd=3)
+abline(v=0, lwd=3, col='red')
+mtext(text = 'B)', side = 3, cex=1.5, adj = 0)
+
+writeLines(sprintf('Probability that treatment effect>0 is %s', mean(out$beta_Trt > 0)))
+```
+
+```{r individual_fits}
+par(mfrow=c(5,5), mar=c(3,3,1,0),las=1, family='serif', cex.lab=1.5, cex.axis=1.5)
+for(id in 1:data_1$J){
+  indo = data_1$id_obs==id
+  indc = data_1$id_cens==id
+  plot(data_1$t_obs[indo], 
+       data_1$y_obs[indo],pch=20, xlab='', ylab='',cex=2,
+       ylim=range(saint$ct), xlim = c(0,6), yaxt='n', xaxt='n')
+  points(data_1$t_cens[indc], 
+       data_1$y_cens[indc],pch=18,cex=2,col='blue')
+  polygon(c(c(data_1$t_obs[indo],data_1$t_cens[indc]),
+            rev(c(data_1$t_obs[indo],data_1$t_cens[indc]))),
+          c(c(apply(out$mu_obs,2,quantile,.1)[indo],
+          apply(out$mu_cens,2,quantile,.1)[indc]), 
+          rev(c(apply(out$mu_obs,2,quantile,.9)[indo],
+          apply(out$mu_cens,2,quantile,.9)[indc]))),
+          border = NA, col = adjustcolor('grey',.3))
+  lines(c(data_1$t_obs[indo],data_1$t_cens[indc]),
+        c(apply(out$mu_obs,2,mean)[indo],
+          apply(out$mu_cens,2,mean)[indc]),lwd=3, col=adjustcolor('grey',.5))
+  points(data_1$t_obs[indo],data_1$y_obs[indo],pch=20,cex=2)
+  points(data_1$t_cens[indc],data_1$y_cens[indc],pch=18,cex=2,col='blue')
+
+  abline(h=CT_threshold, lty=2)
+  if(id%%5 == 1){ axis(2, at = seq(15,40,by=5))}
+  if(id>19) {axis(1, at = c(0,3,6)) }
+}
+```
+
+Plot the posterior summaries
+```{r posterior_distributions, fig.width=11, fig.height=6}
+par(mfrow=c(2,3), cex.lab=1.5, cex.axis=1.5)
+hist(out$beta_0, xlab='Population intercept',
+     main='', breaks = 50, yaxt='n',ylab = '', freq = F,
+     border = NA, col=adjustcolor('grey',.9))
+lines(seq(0,30,by=.1), 
+      dnorm(seq(0,30,by=.1),
+            mean = data_1$prior_CT_intercept, sd = 3),
+      col='blue',lwd=3)
+
+hist(out$beta_t, xlab='Population slope',
+     main='', breaks = 50, yaxt='n',ylab = '', freq = F,
+     border = NA, col=adjustcolor('grey',.9))
+lines(seq(0,10,by=.1), 
+      dnorm(seq(0,10,by=.1),
+            mean = data_1$prior_mean_slope, sd = 1),
+      col='blue',lwd=3)
+
+hist(out$beta_Trt, xlab='Treatment effect',
+     main='', breaks = 50, yaxt='n',ylab = '', freq = F,
+     border = NA, col=adjustcolor('grey',.9))
+lines(seq(-1,1,by=.01), 
+      dnorm(seq(-1,1,by=.01),
+            mean = 0, sd = data_1$prior_Trt_sd),
+      col='blue',lwd=3)
+
+hist(out$tau_0, xlab='Standard deviation: random intercept',
+     main='', breaks = 50, yaxt='n',ylab = '', freq = F,
+     border = NA, col=adjustcolor('grey',.9))
+lines(seq(0,10,by=.1), 
+      dnorm(seq(0,10,by=.1),
+            mean = data_1$prior_tau_intercept_mean, 
+            sd = data_1$prior_tau_intercept_sd),
+      col='blue',lwd=3)
+
+hist(out$tau_t, xlab='Standard deviation: random slope',
+     main='', breaks = 50, yaxt='n',ylab = '', freq = F,
+     border = NA, col=adjustcolor('grey',.9))
+lines(seq(-1,3,by=.01), 
+      dnorm(seq(-1,3,by=.01),
+            mean = data_1$prior_tau_slope_mean, 
+            sd = data_1$prior_tau_slope_sd),
+      col='blue',lwd=3)
+
+hist(out$sigma, xlab='Standard deviation: residual error',
+     main='', breaks = 50, yaxt='n',ylab = '', freq = F,
+     border = NA, col=adjustcolor('grey',.9))
+lines(seq(0,10,by=.1), 
+      dnorm(seq(0,10,by=.1),
+            mean = 1, sd = data_1$prior_sigma_sd),
+      col='blue',lwd=3)
+
+```
+
